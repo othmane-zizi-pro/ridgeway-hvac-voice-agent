@@ -32,20 +32,28 @@ if not MOCK or not TOKEN:
     sys.exit("set VAPI_API_KEY and MOCK_BASE_URL first")
 
 
-def vapi(method: str, path: str, body: dict | None = None) -> dict:
+def vapi(method: str, path: str, body: dict | None = None, fatal: bool = True) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(
         f"{API}{path}",
         data=data,
         method=method,
-        headers={"Authorization": f"Bearer {TOKEN}", "Content-Type": "application/json"},
+        headers={
+            "Authorization": f"Bearer {TOKEN}",
+            "Content-Type": "application/json",
+            # Vapi sits behind Cloudflare, which rejects urllib's default user agent.
+            "User-Agent": "ridgeway-provision/1.0",
+        },
     )
     try:
         with urllib.request.urlopen(req, timeout=60) as resp:
             raw = resp.read()
             return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
-        sys.exit(f"{method} {path} -> {e.code}: {e.read().decode()}")
+        detail = f"{method} {path} -> {e.code}: {e.read().decode()}"
+        if not fatal:
+            raise RuntimeError(detail) from None
+        sys.exit(detail)
 
 
 def fixed_header(value: str) -> dict:
@@ -195,6 +203,7 @@ def main() -> None:
             state[key] = vapi("POST", "/tool", spec)["id"]
             print(f"created tool {spec['name']} {state[key]}")
         tool_ids.append(state[key])
+        STATE.write_text(json.dumps(state, indent=2) + "\n")
 
     body = assistant_body(tool_ids)
     if state.get("assistantId"):
@@ -203,13 +212,29 @@ def main() -> None:
     else:
         state["assistantId"] = vapi("POST", "/assistant", body)["id"]
         print(f"created assistant {state['assistantId']}")
+    STATE.write_text(json.dumps(state, indent=2) + "\n")
 
     if not state.get("phoneNumberId"):
-        number = vapi(
-            "POST",
-            "/phone-number",
-            {"provider": "vapi", "name": "Ridgeway HVAC after-hours", "assistantId": state["assistantId"]},
-        )
+        # A free Vapi number. Portland's 503 first, then anything US.
+        number = None
+        for area in ("503", "971", "360", "425", "206", "415", "212"):
+            try:
+                number = vapi(
+                    "POST",
+                    "/phone-number",
+                    {
+                        "provider": "vapi",
+                        "numberDesiredAreaCode": area,
+                        "name": "Ridgeway HVAC after-hours",
+                        "assistantId": state["assistantId"],
+                    },
+                    fatal=False,
+                )
+                break
+            except RuntimeError as e:
+                print(f"area code {area}: {e}")
+        if number is None:
+            sys.exit("could not get a free number in any tried area code")
         state["phoneNumberId"] = number["id"]
         state["phoneNumber"] = number.get("number")
         print(f"created phone number {number.get('number')} {number['id']}")
