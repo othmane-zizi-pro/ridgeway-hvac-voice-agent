@@ -1,0 +1,19 @@
+[project]
+name = "ridgeway-hvac-mock"
+version = "0.1.0"
+description = "Mock of Ridgeway HVAC's two booking endpoints, plus the voice agent that calls them"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115",
+    "mangum>=0.19",
+    "pydantic>=2.9",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "httpx>=0.27",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
