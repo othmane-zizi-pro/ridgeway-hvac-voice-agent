@@ -161,8 +161,16 @@ def assistant_body(tool_ids: list[str]) -> dict:
             "tools": [{"type": "endCall"}],
         },
         "voice": {"provider": "vapi", "voiceId": "Elliot"},
-        "transcriber": {"provider": "deepgram", "model": "nova-3", "language": "en"},
+        "transcriber": {
+            "provider": "deepgram",
+            "model": "nova-3",
+            "language": "en",
+            # Words the phone line garbles: "AC" came through as "HC", "Ridgeway" as "Bridgeway".
+            "keyterm": ["Ridgeway", "AC", "HVAC", "air conditioning", "area code", "morning", "afternoon"],
+        },
         "endCallMessage": "Thanks for calling Ridgeway. Goodbye.",
+        # Belt and braces: if the model says goodbye without invoking endCall, the line still drops.
+        "endCallPhrases": ["goodbye", "good bye", "have a good evening", "have a good night"],
         "backgroundSound": "off",
         "maxDurationSeconds": 600,
         # Barge-in: the caller can cut the agent off with a couple of words.
