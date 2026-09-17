@@ -1,6 +1,6 @@
 # Ridgeway HVAC after-hours booking agent
 
-Take-home for the Clerk Forward Deployed Engineer role. A homeowner whose air
+A homeowner whose air
 conditioning has died calls Ridgeway HVAC after hours, a voice agent checks
 whether Ridgeway covers their area code, offers a repair window and books it
 against Ridgeway's API. The API is mocked here because production sits on the
