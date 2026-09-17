@@ -68,11 +68,59 @@ BOT   I'm sorry, but Ridgeway does not service the 206 area code, which covers t
       region. I recommend calling a local HVAC company in your area. Thank you for reaching out.
 ```
 
-Mock log: two lookups, 200 each, no `book_appointment` request. The agent did
-not hang up on this first 206 run; the caller did. Fixed the same evening
-(refusal now ends with "Goodbye" plus the endCall tool, and `endCallPhrases`
-drops the line on that word regardless) and re-verified with a third call,
-recorded below.
+Mock log: two lookups, 200 each, no `book_appointment` request. On this
+first 206 run the agent said its refusal but left the line open; the caller
+hung up. The first fix (an endCall tool plus a prompt line telling the model
+to use it) made GPT-4.1 hang up in the same turn as the lookup result, before
+speaking. The mechanism now is the spoken word: the closing sentence ends in
+"Goodbye" and Vapi's `endCallPhrases` drops the line on it. Re-verified with
+the two calls below.
+
+## Final runs after the hang-up fix (2026-09-16, 19:53 and 19:54)
+
+Golden path, caller answering 503 when asked where the house is:
+
+```
+TOOL  lookup_avail_area_codes_serviced {"areaCode": "438"}  -> serviced: false
+BOT   ... Is the house with the AC in the 438 area or somewhere else? What's the area code there?
+USER  503.
+TOOL  lookup_avail_area_codes_serviced {"areaCode": "503"}  -> Portland metro, two slots
+BOT   Good news, we cover the Portland metro area. We have two windows available:
+      Tuesday morning, 8 to noon, or Tuesday afternoon, 1 to 5. Which works better for you?
+USER  Morning.
+BOT   Great, I'll book you for Tuesday morning, 8 to noon. Can I get your name?
+USER  Marcus Hale.
+TOOL  book_appointment {"areaCode":"503","slotId":"SLOT-TUE-AM","name":"Marcus Hale",
+                        "phone":"4386990314","symptom":"AC blowing warm air"}
+      -> 201 {"ok":true,"appointment":{"confirmation":"AC-87116", ...}}
+BOT   You're all set, Marcus. Your confirmation number is A C dash 8 7 1 1 6, for Tuesday
+      morning, 8 to noon. Is there anything else I can help you with?
+USER  Nope, thank you.
+BOT   Thanks for calling Ridgeway. Goodbye.            (line dropped: assistant-said-end-call-phrase)
+```
+
+```
+22:53:19 lookup 200        22:53:34 lookup 200
+22:53:58 {"event": "booked", "confirmation": "AC-87116", "areaCode": "503", "slotId": "SLOT-TUE-AM",
+          "name": "Marcus Hale", "phone": "4386990314", "symptom": "AC blowing warm air"}
+22:53:58 {"method": "POST", "path": "/book_appointment", "status": 201}
+```
+
+Refusal, caller answering 206:
+
+```
+TOOL  lookup_avail_area_codes_serviced {"areaCode": "438"}  -> serviced: false
+BOT   ... Is the house in the 438 area or somewhere else? What's the area code there?
+USER  206.
+TOOL  lookup_avail_area_codes_serviced {"areaCode": "206"}  -> serviced: false, slots: []
+BOT   I'm sorry, but Ridgeway does not service the 206 area code, which is the Seattle region.
+      I recommend calling a local HVAC company in your area. Goodbye.
+                                                          (line dropped: assistant-said-end-call-phrase)
+```
+
+```
+22:54:41 lookup 200        22:54:58 lookup 200        no book_appointment request
+```
 
 ## Interruption
 
@@ -91,5 +139,7 @@ unknown slot, 400 for a phone with a country code.
 ## Transcriber note
 
 Deepgram heard "HC" for "AC" and "Bridgeway" for "Ridgeway" on the first
-calls. The transcriber now carries key terms for those words, and the prompt
-tells the model to normalise "HC" to "AC" in the symptom it books.
+calls, and the first booking's symptom was written as "HC is blowing warm
+air". The transcriber now carries key terms for those words and the prompt
+tells the model to normalise to "AC"; the final booking reads "AC blowing warm
+air" and the greeting transcribes as "Ridgeway".
