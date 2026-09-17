@@ -158,7 +158,10 @@ def assistant_body(tool_ids: list[str]) -> dict:
             "maxTokens": 200,
             "messages": [{"role": "system", "content": prompt}],
             "toolIds": tool_ids,
-            "tools": [{"type": "endCall"}],
+            # No endCall tool: with one in hand GPT-4.1 hung up in the same turn as a
+            # tool result, before speaking. The call ends on the spoken word instead
+            # (endCallPhrases below).
+            "tools": [],
         },
         "voice": {"provider": "vapi", "voiceId": "Elliot"},
         "transcriber": {
@@ -168,9 +171,7 @@ def assistant_body(tool_ids: list[str]) -> dict:
             # Words the phone line garbles: "AC" came through as "HC", "Ridgeway" as "Bridgeway".
             "keyterm": ["Ridgeway", "AC", "HVAC", "air conditioning", "area code", "morning", "afternoon"],
         },
-        "endCallMessage": "Thanks for calling Ridgeway. Goodbye.",
-        # Belt and braces: if the model says goodbye without invoking endCall, the line still drops.
-        "endCallPhrases": ["goodbye", "good bye", "have a good evening", "have a good night"],
+        "endCallPhrases": ["goodbye", "good bye"],
         "backgroundSound": "off",
         "maxDurationSeconds": 600,
         # Barge-in: the caller can cut the agent off with a couple of words.
