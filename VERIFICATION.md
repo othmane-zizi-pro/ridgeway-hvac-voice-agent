@@ -124,9 +124,11 @@ BOT   I'm sorry, but Ridgeway does not service the 206 area code, which is the S
 
 ## Interruption
 
-During the golden-path call the caller spoke over the window offer; the
-agent stopped and answered the interruption. Vapi's `stopSpeakingPlan` is set
-to cut the agent off after two words of caller speech.
+Barge-in is configured, not separately measured: `firstMessageInterruptionsEnabled`
+is on and `stopSpeakingPlan` cuts the agent off after two words or 0.2 s of
+caller speech, with a 0.8 s backoff before it resumes. Vapi's call log does not
+mark interruptions, so this section records the settings rather than a
+transcript.
 
 ## Mock contract, live
 
