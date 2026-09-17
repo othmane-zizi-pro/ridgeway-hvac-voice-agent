@@ -10,7 +10,10 @@ aws logs filter-log-events --region "$REGION" \
   --log-group-name "/aws/lambda/$FUNCTION_NAME" \
   --start-time "$SINCE" \
   --filter-pattern '{ $.path = * || $.event = "booked" }' \
-  --query 'events[].[timestamp,message]' --output text \
-  | while IFS=$'\t' read -r ts msg; do
-      printf '%s  %s\n' "$(date -r $((ts/1000)) '+%H:%M:%S')" "$msg"
-    done
+  --output json \
+  | python3 -c '
+import json, sys, datetime
+for e in json.load(sys.stdin)["events"]:
+    ts = datetime.datetime.fromtimestamp(e["timestamp"] / 1000).strftime("%H:%M:%S")
+    print(ts, e["message"].strip().split("\t")[-1])
+'
